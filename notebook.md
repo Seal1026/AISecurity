@@ -8,3 +8,5 @@ https://www.tensorflow.org/api_docs/python/tf/keras/layers/Layer
 https://www.tensorflow.org/guide/keras/custom_layers_and_models
 3. kfold
 https://www.machinecurve.com/index.php/2020/02/18/how-to-use-k-fold-cross-validation-with-keras/#our-model-a-cifar-10-cnn-classifier
+3. train validate and test
+https://stats.stackexchange.com/questions/152907/how-do-you-use-the-test-dataset-after-cross-validation
