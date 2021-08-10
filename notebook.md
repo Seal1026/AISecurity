@@ -13,6 +13,10 @@ https://stats.stackexchange.com/questions/152907/how-do-you-use-the-test-dataset
 5. https://machinelearningmastery.com/how-to-develop-a-convolutional-neural-network-from-scratch-for-mnist-handwritten-digit-classification/
 6.https://doc.codingdict.com/tensorflow/tfdoc/tutorials/mnist_beginners.html
 
+#### Machine learning model
+1. How to find best parameters setting of ml model
+https://machinelearningmastery.com/use-keras-deep-learning-models-scikit-learn-python/
+
 #### Linux
 1. change folder in cmd
 https://www.geeksforgeeks.org/cd-cmd-command/
