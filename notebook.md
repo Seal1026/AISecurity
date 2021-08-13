@@ -16,6 +16,8 @@ https://stats.stackexchange.com/questions/152907/how-do-you-use-the-test-dataset
 #### Machine learning model
 1. How to find best parameters setting of ml model
 https://machinelearningmastery.com/use-keras-deep-learning-models-scikit-learn-python/
+2. plot learning curve
+https://stackoverflow.com/questions/41908379/keras-plot-training-validation-and-test-set-accuracy/56807595#56807595
 
 #### Linux
 1. change folder in cmd
