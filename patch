@@ -1,0 +1,255 @@
+from PIL import Image, ImageDraw
+%matplotlib inline
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+from matplotlib import transforms
+import cv2
+from pycocotools.coco import COCO
+
+import cv2
+from PIL import Image 
+import random
+import os
+import numpy as np
+import random
+import skimage.transform
+
+def adjust_contrast_bri(contrast,brightness,img_ori):
+    img = img_ori
+    img = np.int16(img)
+    img = img * (contrast/127+1) - contrast + brightness
+    img = np.clip(img, 0, 255)
+    img = np.uint8(img)
+    return img
+
+# rndomly rorate the image within certain angle
+def rand_rotate(img,patch,angle_ran):
+    angle1 = np.random.randint(-angle_ran,angle_ran)
+    rotated_patch = skimage.transform.rotate(patch,angle = angle1)
+    #rotated_image1 = 
+    return rotated_patch
+
+domain ='train/'
+dataroot = '/home/hwjin/FLIR/FLIR_ADAS_1_3' + os.sep
+jsonfile = dataroot + domain + 'thermal_annotations.json'
+coco = COCO(jsonfile) # coco class to view jsonfile
+
+x=> coco left upper honrizontal coordinate, y=> coco left upper vertical coordinate
+\n Take note of x,y, xc,yc when changing image
+
+def yolo_cc(file): #from yolo txt file to coco format
+    x = (x_yl-w_yl/2)*width #weight is the size of the image
+    y = (y_yl*height-h_yl/2)*height
+    w = w_yl*width
+    h = h_yl*height
+    return x,y,w,h
+
+def view_FLIR(ind): #input an image id
+    imInfo = coco.imgs[ind]
+    annIds = coco.getAnnIds(imgIds=imInfo['id']) #get annotations id of this image
+    imgfile = dataroot + domain + imInfo['file_name']
+
+    print(f'{imInfo} \ncorresbonding annids is\n{annIds}\n')
+
+    anns = coco.loadAnns(annIds)#load the annotations information according to the anns id
+    if anns:
+        print(anns[0]) #show the first annotations
+    
+    img = cv2.imread(imgfile) #open the image file
+    im_ori = cv2.imread(imgfile)
+
+    for ann in anns:
+        x, y, w, h = ann['bbox']
+        cv2.rectangle(img, (x,y), (x + w, y + h), (255,0,0), 2)
+        cat = coco.loadCats(ann['category_id'])[0]['name']
+        cv2.putText(img, cat, (x,y), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
+
+    plt.imshow(img)
+    plt.show()
+    return im_ori
+
+def multiple_gussians(centers, s, sig, box_size):
+    zeros = np.zeros((box_size[1],box_size[0]))
+    patch_sum = np.repeat(zeros[...,np.newaxis],3,axis = 2)
+    for idx in range(0,len(centers),2):
+        xc = centers[idx]-y
+        yc = centers[idx+1]-x
+        print(xc,yc)
+        patch = gaussian(xc,yc, s, sig, box_size)
+        patch_sum = patch_sum + patch
+    return patch_sum
+
+#uppder body patch, 1/5
+def patch_range(bbox,sigma):
+    #gaussian distribution beome zero after 2*sd
+    sigma_d = 2*sigma
+    #wb,hb are the highet width of the bonding box
+    xbb,ybb,wbb,hbb = person_ann['bbox']
+    #the patch box
+    sigma = int(sigma)
+    if sigma:
+        x,y,w,h = xbb-sigma_d,int(np.floor(ybb+hbb/7))-int(sigma_d),wbb+2*sigma_d,int(np.floor(hbb/5)+2*sigma_d)
+    elif sigma==0:
+        x,y,w,h = xbb,int(np.floor(ybb+hbb/7)),wbb,int(np.floor(hbb/5))
+    return x,y,w,h
+
+#txt file: label, center_x, certer_y,w,h
+def gaussian(xc,yc, s, sig, box_size): #xc, yc are coordinates respective to the bbox, xc<w;yc<h
+    patch_w = box_size[1]
+    patch_h = box_size[0]
+    gus_patch = np.zeros((patch_w,patch_h))
+    for xb in range(patch_w):
+        for yb in range(patch_h):            
+            r = (xb-xc)**2+(yb-yc)**2
+            gus_patch[xb][yb] = s*np.exp(-r/(2*sig**2))
+    gus_patch = np.repeat(gus_patch[...,np.newaxis],3,axis = 2)
+    return gus_patch
+
+def patched_image(im,patch,x,y,w,h):
+    im_p = im.astype('float')
+    im_p[y:y+h,x:x+w,:] = [a + b for a, b in zip(im[y:y+h,x:x+w,:], patch)]
+    #im = np.array(im)
+    #im_dp = im.astype(float)
+    #im_dp[y:y+h,x:x+w,:] = im_dp[y:y+h,x:x+w,:] + patch
+    #im_dp = [a + b for a, b in zip(im[y:y+h,x:x+w,:], patch)]
+    return im_p
+
+ind = 8486
+imInfo = coco.imgs[ind]
+annIds = coco.getAnnIds(imgIds=imInfo['id'])
+anns = coco.loadAnns(annIds)
+person_ann = anns[4]
+print(person_ann['bbox'])
+
+### Load image
+
+#the input should range from 0 to size => same as image_id
+img = view_FLIR(ind)
+
+### Add single gaussian noise to the image
+
+#### Add gaussian noise in a box at person's upper body with size of 1/5 height\n
+#### Note that the whole circle must inside the patch 
+#### ? patch background
+
+s = 50 # adjust large value
+sig = 5
+
+x,y,w,h = patch_range(person_ann['bbox'],sig)
+print(x,y,w,h)
+
+box_size = (w,h)
+
+#the random coordinates of guassian center inside the 'patch'
+#xc, yc are coordinates respective to the bbox, xc<w;yc<h
+yc = random.randint(sig,w-sig)
+xc = random.randint(sig,h-sig) # make all noise inside the patch
+
+#generate gaussian patch
+gus_patch = gaussian(xc,yc, s, sig, box_size)
+
+plt.imshow(gus_patch)
+
+x,y,w,h
+
+yc,xc
+
+gus_patch.shape
+
+### Add a boundary test
+
+#im_p = img
+#im_p = np.array(im_p)
+#im_p = im_p.astype(float)
+#im_p[y:y+h,x:x+w,:] = im_p[y:y+h,x:x+w,:] + gus_patch
+
+[a + b for a, b in zip(img[y:y+h,x:x+w,:], gus_patch)]
+
+im_p = patched_image(img,gus_patch,x,y,w,h)
+#im_p = img
+#im_p[y:y+h,x:x+w,:] = [a + b for a, b in zip(img[y:y+h,x:x+w,:], gus_patch)]
+
+#### Sometimes we did not see update ie because only a small area of values are updated.
+#### Below only show head and tail
+
+im_p[y:y+h,x:x+w,:]
+#im_p[y+yc:y+yc+2*sig,x+xc:x+xc+2*sig,:]
+
+#coco form of the bounding box
+xbb,ybb,wbb,hbb = person_ann['bbox']
+cv2.rectangle(im_p, (xbb,ybb), (xbb + wbb, ybb + hbb), (255,0,0), 2)
+cv2.rectangle(im_p, (x,y), (x + w, y + h), (255,0,0), 2)
+plt.imshow(im_p/255)
+
+### Add multiple gaussian noise to the image
+
+x,y,w,h = patch_range(person_ann['bbox'],sig) #bbox axis, same as standard coordinates
+print(x,y,w,h)
+
+im_dp = img
+
+centers = list()
+centers = [244,299,260,325,275,360] # a list of centers of the guassian function, parameters to be updated
+# the even one is y(honrizontal), the odd one is x (vertical); x between 600-1000,y between 250-800
+#? we should have coordinates related to bbox or related to whole image
+
+s = 10
+sig = 5.07
+box_size = (w,h)
+
+patch_sum = multiple_gussians(centers,s,sig,box_size)
+plt.imshow(patch_sum)
+
+### Please note, nhonrizontal, vertical, x,y;xc,yc
+
+im_dp= patched_image(img,patch_sum,x,y,w,h)
+#im = np.array(im)
+#im_dp = im.astype(float)
+#im_dp[y:y+h,x:x+w,:] = im_dp[y:y+h,x:x+w,:] + patch_sum 
+
+im_dp[y:y+h,x:x+w,:]
+
+cv2.rectangle(im_dp, (x,y), (x+w,y+h), (255,0,0), 2)
+plt.imshow(im_dp[...,::-1]/255)
+
+### Random transformation of patch
+
+#### Random Rotation ccw and cw within 20 degree
+
+angle1 = np.random.randint(0,20)
+angle2 = -np.random.randint(0,20)
+rotated_image1 = skimage.transform.rotate(patch_sum,angle = angle1)
+rotated_image2 = skimage.transform.rotate(patch_sum,angle = angle2)
+print(angle1)
+print(angle2)
+
+plt.subplot(131)
+plt.imshow(patch_sum)
+print(rotated_image1)
+plt.title('original')
+plt.subplot(132)
+plt.imshow(rotated_image1)
+plt.title('cw ')
+plt.subplot(133)
+plt.imshow(rotated_image2)
+plt.title('ccw ')
+
+rotated_image1.shape
+
+#### Change contrat & brightness of image
+new_image = (old_image) × (contrast/127 + 1) - contrast + brightness
+
+Here contrast and brightness are integers in the range [-127,127]. The scalar 127 is used for this range. Also, below is the code I used.
+
+im = patch_sum
+
+plt.subplot(131)
+plt.imshow(patch_sum)
+plt.title('original')
+plt.subplot(132)
+plt.imshow(adjust_contrast_bri(20,40,im))
+plt.title('new_image1')
+plt.subplot(133)
+plt.imshow(adjust_contrast_bri(120,120,im))
+plt.title('new_image2')
+
