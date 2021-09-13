@@ -1,0 +1,127 @@
+#import zipfile as zf
+#files = zf.ZipFile("FLIR_ADAS_1_3.zip", 'r')
+#files.extractall('FLIR')
+#files.close()
+
+#!pip install pycocotools --trusted-host files.pythonhosted.org --trusted-host pypi.org --trusted-host pypi.python.org
+
+### Choose which data (train/val) to select and store
+
+#domain = 'train/' 
+domain ='val/'
+
+### Import package
+
+from pycocotools.coco import COCO
+%matplotlib inline
+import matplotlib.pyplot as plt
+import cv2
+from PIL import Image 
+import numpy as np
+
+import os
+import numpy as np
+import random
+# 定义变量
+dataroot = '/home/hwjin/FLIR/FLIR_ADAS_1_3' + os.sep
+
+def view_FLIR(ind): #input an image id
+    imInfo = coco.imgs[ind]
+    annIds = coco.getAnnIds(imgIds=imInfo['id']) #get annotations id of this image
+    imgfile = dataroot + domain + imInfo['file_name']
+
+    print(f'{imInfo} \ncorresbonding annids is\n{annIds}\n')
+
+    anns = coco.loadAnns(annIds)#load the annotations information according to the anns id
+    if anns:
+        print(anns[0]) #show the first annotations
+
+    img = cv2.imread(imgfile) #open the image file
+
+    for ann in anns:
+        x, y, w, h = ann['bbox']
+        cv2.rectangle(img, (x,y), (x + w, y + h), (255,0,0), 2)
+        cat = coco.loadCats(ann['category_id'])[0]['name']
+        cv2.putText(img, cat, (x,y), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
+
+    plt.imshow(img)
+    plt.show()
+    
+ #if there is one person's height in all annotations of the img i,we save it
+def valid_peopleidx(people_index,coco,name):
+    result  = []
+    for image_id in people_index: #transverse for all images
+        annsid = coco.getAnnIds(imgIds = image_id)
+        for annid in annsid:# transver all annotations in this image
+            ann = coco.loadAnns(ids = annid)
+            if ann[0]['category_id'] == 1 and ann[0]['bbox'][3]>120:
+                result.append(image_id)
+                break
+    with open(name, 'wb') as fp:
+        pickle.dump(result, fp)
+#for i in range(len(result)):
+#    FLIR_person_select_index.append(FLIR_person_all[i])
+
+### Load json file
+
+jsonfile = dataroot + domain + 'thermal_annotations.json'
+coco = COCO(jsonfile) # coco class to view jsonfile
+
+### View  annotations
+
+cls = 'person'
+id = coco.getCatIds(cls)[0]
+print(f'{cls} corresponding index is {id}')
+
+cat = coco.loadCats(id)
+print(f'{id} corresponding category is {cat}')
+
+print(len(coco.imgs))
+print(coco.imgs[0])
+
+### View the specific image
+
+ind = random.randint(0, len(coco.imgs))
+view_FLIR(ind)
+
+coco.getCatIds(catNms=['person']) # id number of this category
+
+### Select images contain person
+
+people_index = coco.getImgIds(catIds = [1])
+print(people_index)
+
+### Select and save FLIR_people_train/val data
+
+FLIR_person_anns_index = coco.getAnnIds(imgIds = people_index) #get index of anns
+FLIR_person_anns= coco.loadAnns(ids = FLIR_person_anns_index) #load anns from index
+
+print(len(FLIR_person_anns))#1205 annotations
+print(len(people_index))
+
+if domain == 'val/':
+    valid_peopleidx(people_index,coco,'FLIR_people_select_valIdx')
+
+if domain == 'train/':
+    valid_peopleidx(people_index,coco,'FLIR_people_select_trainIdx')
+
+### Save val set index is saved in result with pickle
+
+#import pickle
+#with open('FLIR_people_select_valIdx', 'wb') as fp:
+#    pickle.dump(result, fp)
+
+#with open ('FLIR_people_select_valIdx', 'rb') as fp:
+#     FLIR_people_select_valIdx = pickle.load(fp)
+
+### Save training index is saved in result with pickle
+
+#with open('FLIR_people_select_valIdx', 'wb') as fp:
+#    pickle.dump(train, fp)
+
+#import pickle
+#with open ('FLIR_people_select_trainIdx', 'rb') as fp:
+#     FLIR_people_select_trainIdx = pickle.load(fp)
+
+FLIR_people_select_trainIdx
+
