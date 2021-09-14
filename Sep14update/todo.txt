@@ -1,2 +1,8 @@
 1. optimization function
 2. pass scores to the optimization function
+3. changes: 
+   - change FLIR_people_select labels name=> change it to be the same as file index 
+   - save all patched image in a folder 
+   main file:
+   optimization
+   copy changes in patch.py and prosessiong
