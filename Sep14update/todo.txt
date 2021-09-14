@@ -1,0 +1,2 @@
+1. optimization function
+2. pass scores to the optimization function
