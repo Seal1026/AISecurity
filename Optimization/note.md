@@ -6,3 +6,6 @@ The first term is the classification loss over 2 classes (There is object or not
 
 ### To read:
 https://jonathan-hui.medium.com/real-time-object-detection-with-yolo-yolov2-28b1b93e2088
+https://blog.csdn.net/notHeadache/article/details/82866676
+https://github.com/soumyac1999/FGSM-Keras/blob/master/targeted_attack.ipynb
+https://github.com/soumyac1999/FGSM-Keras/blob/master/untargeted_attack.ipynb
